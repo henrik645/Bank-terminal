@@ -1,11 +1,12 @@
-function addMoney(account, amount, code)
-  http.request("http://localhost/centraldator/add.php" .. "?account=" .. account .. "&amount=" .. amount .. "&code=" .. code)
-  timeout = os.startTimer(10)
-  event, url, message = os.pullEvent()
+local serverURL = "http://localhost/centraldator"
+local commands = {"add", "remove", "transfer", "quit", "help"}
+
+function readError(event, incomeMessage, rightMessage)
   if event == "timer" then
     term.write("No connection")
   elseif event == "http_success" then
-    message = message.readAll()
+    message = incomeMessage.readLine()
+    print(message)
     if message == "error" then
       term.scroll(1)
       term.setCursorPos(1, max_y)
@@ -17,11 +18,7 @@ function addMoney(account, amount, code)
     elseif message == "confirm" then
       term.scroll(1)
       term.setCursorPos(1, max_y)
-      if amount > 0 then
-        term.write("Money added.")
-      else
-        term.write("Money removed.")
-      end
+      term.write(rightMessage)
     else
       term.scroll(1)
       term.setCursorPos(1, max_y)
@@ -36,10 +33,25 @@ function addMoney(account, amount, code)
     term.setCursorPos(1, max_y)
     term.write("An error occured")
   end
-  term.scroll(2)
 end
 
-local commands = {"add", "remove", "transfer", "quit", "help"}
+function addMoney(account, amount, code)
+  http.request(serverURL .. "?account=" .. account .. "&amount=" .. amount .. "&code=" .. code)
+  timeout = os.startTimer(10)
+  event, url, message = os.pullEvent()
+  if amount >= 0 then
+    readError(event, message, "Money added.")
+  else
+    readError(event, message, "Money removed.")
+  end
+  term.scroll(2)
+end
+function transferMoney(account1, account2, amount, pin)
+  http.request(serverURL .. "?account1=" .. account1 .. "&account2=" .. account2 .. "&amount=" .. amount .. "&pin=" .. pin)
+  timeout = os.startTimer(10)
+  event, url, message = os.pullEvent()
+  readError(event, message, "Money transferred.")
+end
 
 max_x, max_y = term.getSize()
 
@@ -83,13 +95,16 @@ while true do
     term.scroll(1)
     term.setCursorPos(1, max_y)
     term.write("Insert card")
+    term.scroll(1)
+    term.setCursorPos(1, max_y)
+    term.write("Press any key to exit")
     timeout = os.startTimer(10)
     event = os.pullEvent()
     if event == "timer" then
       term.scroll(1)
       term.setCursorPos(1, max_y)
       term.write("No card inserted")
-    else
+    elseif event == "disk" then
       if not fs.exists("disk/card") then
         term.scroll(1)
         term.setCursorPos(1, max_y)
@@ -108,18 +123,21 @@ while true do
         local amount = io.read()
         addMoney(account, amount, code)
       end
+    else
+      term.scroll(1)
+      term.setCursorPos(1, max_y)
+      term.write("Cancelled")
+      term.scroll(2)
     end
   elseif action == "2" then
     term.scroll(1)
     term.setCursorPos(1, max_y)
     term.write("Insert card")
-    timeout = os.startTimer(10)
+    term.scroll(1)
+    term.setCursorPos(1, max_y)
+    term.write("Press any key to exit")
     event = os.pullEvent()
-    if event == "timer" then
-      term.scroll(1)
-      term.setCursorPos(1, max_y)
-      term.write("No card inserted")
-    else
+    if event == "disk" then
       if not fs.exists("disk/card") then
         term.scroll(1)
         term.setCursorPos(1, max_y)
@@ -138,9 +156,57 @@ while true do
         local amount = io.read()
         addMoney(account, -(amount), code)
       end
+    else
+      term.scroll(1)
+      term.setCursorPos(1, max_y)
+      term.write("Cancelled.")
+      term.scroll(2)
     end
   elseif action == "3" then
-    transferMoney()
+    term.scroll(1)
+    term.setCursorPos(1, max_y)
+    term.write("Insert card 1")
+    term.scroll(1)
+    term.setCursorPos(1, max_y)
+    term.write("Press any key to exit")
+    event = os.pullEvent()
+    if event == "disk" then
+      if not fs.exists("disk/card") then
+        term.scroll(1)
+        term.setCursorPos(1, max_y)
+        term.write("Expired card")
+      else
+        file = fs.open("disk/card", "r")
+        account1 = file.readLine()
+        file.close()
+        file = fs.open("disk/pin", "r")
+        pin = file.readLine()
+        file.close()
+        term.scroll(1)
+        term.setCursorPos(1, max_y)
+        term.write("Insert card 2")
+        event = os.pullEvent("disk")
+        if not fs.exists("disk/card") then
+          term.scroll(1)
+          term.setCursorPos(1, max_y)
+          term.write("Expired card")
+        else
+          file = fs.open("disk/card", "r")
+          account2 = file.readLine()
+          file.close()
+          term.scroll(1)
+          term.setCursorPos(1, max_y)
+          term.write("Amount: $")
+          amount = io.read()
+          transferMoney(account1, account2, amount, pin)
+        end
+      end
+    else
+      term.scroll(1)
+      term.setCursorPos(1, max_y)
+      term.write("Cancelled.")
+      term.scroll(2)
+    end
   elseif action == "4" then
     term.setBackgroundColor(colors.black)
     term.setTextColor(colors.white)
