@@ -1,24 +1,36 @@
-local serverURL = "http://localhost/centraldator"
+local serverURL = "" // Insert your server URL here
 local commands = {"add", "remove", "transfer", "quit", "help"}
+local help = {["add"] = "Add money to account", ["remove"] = "Remove money from account", ["transfer"] = "Transfer money between accounts", ["quit"] = "Quits the program", ["help"] = "Brings up this help"}
+
+function helpMoney()
+  for i = 1, #commands do
+    term.scroll(1)
+    term.setCursorPos(1, max_y)
+    term.write(commands[i] .. " - " .. help[commands[i]])
+  end
+  term.scroll(2)
+end
 
 function readError(event, incomeMessage, rightMessage)
   if event == "timer" then
     term.write("No connection")
   elseif event == "http_success" then
     message = incomeMessage.readLine()
-    print(message)
     if message == "error" then
       term.scroll(1)
       term.setCursorPos(1, max_y)
       term.write("An error occured")
+      term.scroll(2)
     elseif message == "pin" then
       term.scroll(1)
       term.setCursorPos(1, max_y)
       term.write("Wrong code")
+      term.scroll(2)
     elseif message == "confirm" then
       term.scroll(1)
       term.setCursorPos(1, max_y)
       term.write(rightMessage)
+      term.scroll(2)
     else
       term.scroll(1)
       term.setCursorPos(1, max_y)
@@ -28,15 +40,17 @@ function readError(event, incomeMessage, rightMessage)
     term.scroll(1)
     term.setCursorPos(1, max_y)
     term.write("HTTP Error")
+    term.scroll(2)
   else
     term.scroll(1)
     term.setCursorPos(1, max_y)
     term.write("An error occured")
+    term.scroll(2)
   end
 end
 
 function addMoney(account, amount, code)
-  http.request(serverURL .. "?account=" .. account .. "&amount=" .. amount .. "&code=" .. code)
+  http.request(serverURL .. "/add.php" .. "?account=" .. account .. "&amount=" .. amount .. "&code=" .. code)
   timeout = os.startTimer(10)
   event, url, message = os.pullEvent()
   if amount >= 0 then
@@ -44,10 +58,9 @@ function addMoney(account, amount, code)
   else
     readError(event, message, "Money removed.")
   end
-  term.scroll(2)
 end
 function transferMoney(account1, account2, amount, pin)
-  http.request(serverURL .. "?account1=" .. account1 .. "&account2=" .. account2 .. "&amount=" .. amount .. "&pin=" .. pin)
+  http.request(serverURL .. "/transfer.php" .. "?account1=" .. account1 .. "&account2=" .. account2 .. "&amount=" .. amount .. "&pin=" .. pin)
   timeout = os.startTimer(10)
   event, url, message = os.pullEvent()
   readError(event, message, "Money transferred.")
